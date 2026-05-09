@@ -21,28 +21,44 @@ Ninguna persona avanza a su bloque hasta que Fase 0 esté completa y commiteada.
 
 ---
 
-### F0-01 · Enums compartidos
+### F0-01 · Enums compartidos · [BLOQUEA → F0-02, P1-09, P2-01, P2-05, P3-02, P3-05]
 
 **Directorio:** `shared/enums/`
 
 **Descripción**
-Como sistema, necesito enums centralizados que representen los estados posibles de una partida y los resultados de un impacto, para que todos los módulos compartan las mismas constantes sin duplicación.
+Como sistema, necesito enums centralizados que representen los estados posibles de una partida, los resultados de un impacto y los códigos de error de negocio, para que todos los módulos compartan las mismas constantes sin duplicación.
 
 **Criterios de aceptación:**
 - `GameStatus` define exactamente: `WAITING`, `ACTIVE`, `RESOLVING`, `FINISHED`
 - `HitResult` define exactamente: `MISS`, `HIT`, `DIRECT_HIT`
+- `GameErrorCode` es un enum con exactamente estos valores:
+
+| Código           | HTTP | Quién lo lanza                    |
+|------------------|------|-----------------------------------|
+| GAME_NOT_FOUND   | 404  | LobbyService, GameMemoryStore     |
+| INVALID_MOVE     | 400  | MovementEngine, MovementValidator |
+| OUT_OF_BOUNDS    | 400  | MovementEngine, MovementValidator |
+| INVALID_ATTACK   | 400  | AttackValidator                   |
+| STALE_TURN       | 400  | TurnValidator                     |
+| DUPLICATE_ACTION | 400  | TurnValidator                     |
+| GAME_NOT_ACTIVE  | 409  | TurnValidator, LobbyService       |
+| GAME_FULL        | 409  | LobbyService                      |
+| SELF_JOIN        | 400  | LobbyService                      |
+
 - Ningún enum equivalente existe en ningún otro paquete
+- Ningún módulo hardcodea Strings de error: todos importan `GameErrorCode`
 - Sin dependencias de Spring ni de otros módulos
 
 **Archivos mínimos:**
 ```
 shared/enums/GameStatus.java
 shared/enums/HitResult.java
+shared/enums/GameErrorCode.java
 ```
 
 ---
 
-### F0-02 · Excepción de dominio
+### F0-02 · Excepción de dominio · [DEPENDE DE F0-01]
 
 **Directorio:** `shared/exception/`
 
@@ -51,7 +67,8 @@ Como sistema, necesito una excepción de dominio común para que todos los módu
 
 **Criterios de aceptación:**
 - `GameException` extiende `RuntimeException`
-- Tiene campo `errorCode` (String) además del mensaje para distinguir categorías de error en el handler HTTP
+- Tiene campo `errorCode` (GameErrorCode) además del mensaje para distinguir categorías de error en el handler HTTP
+- El constructor recibe `GameErrorCode` directamente: `new GameException(GameErrorCode.GAME_NOT_FOUND, "mensaje")`
 - Sin dependencias de Spring
 
 **Archivos mínimos:**
@@ -178,14 +195,14 @@ snapshot/dto/snapshot_example.json
 | # | Tarea | Depende de |
 |---|---|---|
 | P1-01 | ActiveGamesRegistry | F0-05 |
-| P1-02 | GameMemoryStore | P1-01 |
+| P1-02 | GameMemoryStore | P1-01, F0-01 |
 | P1-03 | LockExecutor | — |
 | P1-04 | Configuración Spring | — |
 | P1-05 | Entidad JPA y repositorio MySQL | — |
 | P1-06 | GameLifecycleService | P1-05, P1-01 |
 | P1-07 | TurnTimeoutScheduler | P1-01, P2-07 |
 | P1-08 | Test de concurrencia | P1-03, P2-04 |
-| P1-09 | GlobalExceptionHandler | F0-02 |
+| P1-09 | GlobalExceptionHandler | F0-02, F0-01 |
 
 ---
 
@@ -211,7 +228,7 @@ infrastructure/memory/ActiveGamesRegistryTest.java
 
 ---
 
-### P1-02 · GameMemoryStore — fachada de acceso · [DEPENDE DE P1-01] · [BLOQUEA → P2-06, P2-08, P3-02]
+### P1-02 · GameMemoryStore — fachada de acceso · [DEPENDE DE P1-01, F0-01] · [BLOQUEA → P2-06, P2-08, P3-02]
 
 **Directorio:** `infrastructure/memory/`
 
@@ -220,7 +237,7 @@ Como servicio de dominio, necesito una fachada que encapsule el acceso a memoria
 
 **Criterios de aceptación:**
 - Envuelve `ActiveGamesRegistry`
-- Expone: `getOrThrow(String gameId) → GameState` (lanza `GameException(GAME_NOT_FOUND)` si no existe), `save(GameState)`, `remove(String)`
+- Expone: `getOrThrow(String gameId) → GameState` (lanza `GameException(GameErrorCode.GAME_NOT_FOUND)` si no existe), `save(GameState)`, `remove(String)`
 - Los servicios de dominio dependen de `GameMemoryStore`, nunca de `ActiveGamesRegistry` directamente
 
 **Archivos mínimos:**
@@ -361,7 +378,7 @@ infrastructure/ConcurrencyTest.java
 
 ---
 
-### P1-09 · GlobalExceptionHandler — manejo uniforme de errores HTTP · [DEPENDE DE F0-02]
+### P1-09 · GlobalExceptionHandler — manejo uniforme de errores HTTP · [DEPENDE DE F0-02, F0-01]
 
 **Directorio:** `shared/exception/`
 
@@ -369,10 +386,16 @@ infrastructure/ConcurrencyTest.java
 Como cliente de la API, quiero recibir respuestas de error en formato JSON consistente para cualquier tipo de error, para poder manejarlos desde el frontend sin parsear mensajes crudos de excepción.
 
 **Criterios de aceptación:**
-- `GlobalExceptionHandler` con `@RestControllerAdvice` captura `GameException` y devuelve `{ "error": "...", "code": "..." }` con el status HTTP según el `errorCode`:
+- `GlobalExceptionHandler` con `@RestControllerAdvice` captura `GameException` y devuelve `{ "error": "...", "code": "..." }` con el status HTTP según el `errorCode`; usa `GameErrorCode` para el switch, sin Strings hardcodeados:
   - `GAME_NOT_FOUND` → 404
-  - `INVALID_MOVE`, `INVALID_ATTACK`, `STALE_TURN`, `DUPLICATE_ACTION` → 400
+  - `INVALID_MOVE` → 400
+  - `OUT_OF_BOUNDS` → 400
+  - `INVALID_ATTACK` → 400
+  - `STALE_TURN` → 400
+  - `DUPLICATE_ACTION` → 400
+  - `SELF_JOIN` → 400
   - `GAME_NOT_ACTIVE` → 409
+  - `GAME_FULL` → 409
 - Captura `MethodArgumentNotValidException` → 400 con lista de campos inválidos
 - Captura cualquier otra excepción → 500 con `{ "error": "Error interno del servidor" }` sin exponer stack traces
 - Cubierto con test de integración mínimo que verifica al menos dos casos de error
@@ -392,11 +415,11 @@ shared/exception/GlobalExceptionHandlerTest.java
 
 | # | Tarea | Depende de |
 |---|---|---|
-| P2-01 | MovementEngine | F0-04, F0-05 |
+| P2-01 | MovementEngine | F0-04, F0-05, F0-01 |
 | P2-02 | ImpactResolver | F0-03, F0-04 |
 | P2-03 | DamageCalculator | F0-05 |
 | P2-04 | TurnResolver | P2-01, P2-02, P2-03 |
-| P2-05 | Validadores de acción | F0-02, F0-04, F0-05, F0-06 |
+| P2-05 | Validadores de acción | F0-02, F0-04, F0-05, F0-06, F0-01 |
 | P2-06 | TurnCoordinator | P2-04, P2-05, P1-03 |
 | P2-07 | TurnTimeoutService | P1-03, P2-06 |
 | P2-08 | TurnSubmissionService | P2-06, P1-02, P1-06 |
@@ -404,7 +427,7 @@ shared/exception/GlobalExceptionHandlerTest.java
 
 ---
 
-### P2-01 · MovementEngine — aplicar movimiento · [DEPENDE DE F0-04, F0-05]
+### P2-01 · MovementEngine — aplicar movimiento · [DEPENDE DE F0-04, F0-05, F0-01]
 
 **Directorio:** `game/engine/`
 
@@ -413,8 +436,8 @@ Como motor de juego, necesito aplicar el movimiento declarado por un jugador a s
 
 **Criterios de aceptación:**
 - `MovementEngine.applyMovement(PlayerState player, int toCol, int toRow)` actualiza `posCol` y `posRow` si el movimiento es válido
-- Lanza `GameException(INVALID_MOVE)` si la distancia Chebyshev excede 4
-- Lanza `GameException(OUT_OF_BOUNDS)` si las coordenadas destino están fuera de `[0, 14]`
+- Lanza `GameException(GameErrorCode.OUT_OF_BOUNDS)` primero si las coordenadas destino están fuera de `[0, 14]` (validación de límites tiene prioridad)
+- Lanza `GameException(GameErrorCode.INVALID_MOVE)` si el destino es válido en tablero pero la distancia Chebyshev excede 4
 - Quedarse quieto es válido
 - Usa `GridUtils` sin reimplementar lógica
 - Test cubre: movimiento recto válido, diagonal válido, quedarse quieto, exceder distancia, salir del tablero en cada borde
@@ -497,7 +520,7 @@ game/engine/TurnResolver.java
 
 ---
 
-### P2-05 · Validadores de acción · [DEPENDE DE F0-02, F0-04, F0-05, F0-06] · [BLOQUEA → P2-06]
+### P2-05 · Validadores de acción · [DEPENDE DE F0-02, F0-04, F0-05, F0-06, F0-01] · [BLOQUEA → P2-06]
 
 **Directorio:** `game/validation/`
 
@@ -505,9 +528,9 @@ game/engine/TurnResolver.java
 Como sistema, necesito validar las acciones de turno antes de aceptarlas, para rechazar movimientos inválidos, ataques fuera de tablero y acciones extemporáneas sin mezclar esta lógica con el engine.
 
 **Criterios de aceptación:**
-- `MovementValidator.validate(PlayerState current, int toCol, int toRow)` lanza `GameException(INVALID_MOVE)` si Chebyshev > 4 o destino fuera del tablero
-- `AttackValidator.validate(int attackCol, int attackRow)` lanza `GameException(INVALID_ATTACK)` si el punto central está fuera del tablero
-- `TurnValidator.validate(GameState game, TurnAction action)` lanza `GameException` según: `status != ACTIVE` → `GAME_NOT_ACTIVE`; `action.turn != game.turnNumber` → `STALE_TURN`; `playerId` ya en `pendingActions` → `DUPLICATE_ACTION`
+- `MovementValidator.validate(PlayerState current, int toCol, int toRow)` lanza `GameException(GameErrorCode.OUT_OF_BOUNDS)` si el destino está fuera de `[0, 14]`, y `GameException(GameErrorCode.INVALID_MOVE)` si la distancia Chebyshev excede 4 (mismo orden que MovementEngine)
+- `AttackValidator.validate(int attackCol, int attackRow)` lanza `GameException(GameErrorCode.INVALID_ATTACK)` si el punto central está fuera del tablero
+- `TurnValidator.validate(GameState game, TurnAction action)` lanza `GameException` según: `status != ACTIVE` → `GameErrorCode.GAME_NOT_ACTIVE`; `action.turn != game.turnNumber` → `GameErrorCode.STALE_TURN`; `playerId` ya en `pendingActions` → `GameErrorCode.DUPLICATE_ACTION`
 - Cada validador tiene tests independientes para cada caso de rechazo y para el caso válido
 
 **Archivos mínimos:**
@@ -619,10 +642,10 @@ game/engine/TurnResolverTest.java
 | # | Tarea | Depende de |
 |---|---|---|
 | P3-01 | SnapshotFactory | F0-07, F0-04 |
-| P3-02 | SnapshotService | P3-01, P1-01 |
+| P3-02 | SnapshotService | P3-01, P1-01, F0-01 |
 | P3-03 | GameController — polling y reconexión | P3-02 |
 | P3-04 | TurnController — submit | P2-08, P3-01 |
-| P3-05 | Lobby — crear, join e iniciar partida | P1-05, P1-01 |
+| P3-05 | Lobby — crear, join e iniciar partida | P1-05, P1-01, F0-01 |
 | P3-06 | LobbyController | P3-05 |
 | P3-07 | Tests de snapshot | P3-01, P2-04 |
 | P3-08 | Tests de integración del lobby | P3-05, P3-06 |
@@ -653,7 +676,7 @@ snapshot/factory/SnapshotFactoryTest.java
 
 ---
 
-### P3-02 · SnapshotService — recuperar snapshot por polling · [DEPENDE DE P3-01, P1-01]
+### P3-02 · SnapshotService — recuperar snapshot por polling · [DEPENDE DE P3-01, P1-01, F0-01]
 
 **Directorio:** `snapshot/service/`
 
@@ -664,7 +687,7 @@ Como cliente en modo polling, necesito consultar el estado actual de la partida 
 - `SnapshotService.getSnapshot(String gameId, String playerId) → Optional<SnapshotDTO>` devuelve el SnapshotDTO si el turno ya fue resuelto, o `Optional.empty()` si el turno sigue pendiente
 - `SnapshotService.getGameStatus(String gameId) → GameStatus` devuelve el status sin construir el SnapshotDTO completo
 - No modifica el `GameState`, solo lo lee
-- Si la partida no existe → lanza `GameException(GAME_NOT_FOUND)`
+- Si la partida no existe → lanza `GameException(GameErrorCode.GAME_NOT_FOUND)`
 
 **Archivos mínimos:**
 ```
@@ -719,7 +742,7 @@ game/dto/SubmitActionRequest.java
 
 ---
 
-### P3-05 · LobbyService — crear, unirse e iniciar partida · [DEPENDE DE P1-05, P1-01] · [BLOQUEA → P3-06]
+### P3-05 · LobbyService — crear, unirse e iniciar partida · [DEPENDE DE P1-05, P1-01, F0-01] · [BLOQUEA → P3-06]
 
 **Directorio:** `lobby/service/`
 
@@ -728,8 +751,8 @@ Como jugador, quiero poder crear una partida, unirme a una existente e iniciarla
 
 **Criterios de aceptación:**
 - `LobbyService.create(String playerId) → CreateGameResponse` genera un `gameId` único, crea un `GameState` con `status = WAITING` y `playerA` en posición `(2, 2)` con 100 HP, lo guarda en `ActiveGamesRegistry` y hace INSERT en MySQL vía `GameRepository`
-- `LobbyService.join(String gameId, String playerId) → JoinGameResponse` agrega al jugador como `playerB` en posición `(12, 12)` con 100 HP; lanza `GameException(GAME_NOT_FOUND)` si no existe, `GameException(GAME_FULL)` si ya tiene dos jugadores, `GameException(SELF_JOIN)` si `playerId == playerA.playerId`
-- `LobbyService.start(String gameId) → StartGameResponse` cambia `status = ACTIVE` y `turnNumber = 1`; lanza `GameException(GAME_NOT_ACTIVE)` si `status != WAITING`
+- `LobbyService.join(String gameId, String playerId) → JoinGameResponse` agrega al jugador como `playerB` en posición `(12, 12)` con 100 HP; lanza `GameException(GameErrorCode.GAME_NOT_FOUND)` si no existe, `GameException(GameErrorCode.GAME_FULL)` si ya tiene dos jugadores, `GameException(GameErrorCode.SELF_JOIN)` si `playerId == playerA.playerId`
+- `LobbyService.start(String gameId) → StartGameResponse` cambia `status = ACTIVE` y `turnNumber = 1`; lanza `GameException(GameErrorCode.GAME_NOT_ACTIVE)` si `status != WAITING`
 - Ningún método contiene lógica de turno ni de resolución
 
 **Archivos mínimos:**
@@ -891,6 +914,7 @@ game/TurnIntegrationTest.java
 
 | Tarea bloqueante | Desbloquea |
 |---|---|
+| F0-01 Enums compartidos | F0-02, P1-02, P1-09, P2-01, P2-05, P3-02, P3-05 |
 | F0-04 GridUtils | P2-01, P2-02, P2-05 |
 | F0-05 GameState | P1-01, P2-01, P2-03 |
 | F0-06 TurnAction | P2-04, P2-05 |
