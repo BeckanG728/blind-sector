@@ -1,0 +1,1 @@
+aqui iran constantes globales
