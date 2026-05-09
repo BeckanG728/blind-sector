@@ -1,0 +1,53 @@
+{
+  "_comment": "Ejemplo de SnapshotDTO desde la perspectiva del jugador A tras resolver un turno.",
+  "_rules": [
+    "enemyRegion es solo la región del rival (A1-C3), nunca la posición exacta.",
+    "impactAreaReceived son las celdas del ataque enemigo que me afectaron a mí.",
+    "myAttackArea son las celdas de mi ataque (área 3×3 centrada en mi objetivo).",
+    "hitOnMe / hitOnEnemy: MISS | HIT | DIRECT_HIT.",
+    "  MISS       = el ataque no alcanzó al objetivo.",
+    "  HIT        = el objetivo estaba en el área 3×3 pero no en la celda central.",
+    "  DIRECT_HIT = el objetivo estaba exactamente en la celda central del ataque.",
+    "winnerId: null si la partida sigue, 'draw' si empate, o el playerId del ganador."
+  ],
+
+  "gameId": "a3f1c2e4-9b0d-4e2a-8f7c-1234567890ab",
+  "turn": 3,
+  "status": "ACTIVE",
+
+  "myHp": 75,
+  "myCol": 4,
+  "myRow": 3,
+  "myRegion": "A1",
+
+  "enemyRegion": "C3",
+
+  "impactAreaReceived": [
+    { "col": 3, "row": 2 },
+    { "col": 4, "row": 2 },
+    { "col": 5, "row": 2 },
+    { "col": 3, "row": 3 },
+    { "col": 4, "row": 3 },
+    { "col": 5, "row": 3 },
+    { "col": 3, "row": 4 },
+    { "col": 4, "row": 4 },
+    { "col": 5, "row": 4 }
+  ],
+  "hitOnMe": "HIT",
+  "damageReceived": 25,
+
+  "myAttackArea": [
+    { "col": 12, "row": 12 },
+    { "col": 13, "row": 12 },
+    { "col": 14, "row": 12 },
+    { "col": 12, "row": 13 },
+    { "col": 13, "row": 13 },
+    { "col": 14, "row": 13 },
+    { "col": 12, "row": 14 },
+    { "col": 13, "row": 14 },
+    { "col": 14, "row": 14 }
+  ],
+  "hitOnEnemy": "DIRECT_HIT",
+
+  "winnerId": null
+}

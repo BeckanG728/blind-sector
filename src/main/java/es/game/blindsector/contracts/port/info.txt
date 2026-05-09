@@ -1,0 +1,1 @@
+Aqui iran interfaces para definir contratos de comunicacion entre modulos
