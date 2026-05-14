@@ -2,6 +2,7 @@ package es.game.blindsector.game.engine;
 
 import es.game.blindsector.game.domain.GameState;
 import es.game.blindsector.game.domain.ImpactArea;
+import es.game.blindsector.game.domain.Position;
 import es.game.blindsector.player.domain.PlayerState;
 import es.game.blindsector.shared.enums.HitResult;
 import es.game.blindsector.shared.utils.GridUtils;
@@ -107,10 +108,10 @@ public class TurnResolver {
                 .damageToB(damageDeA)
                 .hitResultA(hitDeB)
                 .hitResultB(hitDeA)
-                .finalPositionA(playerA.getPosCol(), playerA.getPosRow())
-                .finalPositionB(playerB.getPosCol(), playerB.getPosRow())
-                .regionOfBSeenByA(GridUtils.resolveRegion(playerB.getPosCol(), playerB.getPosRow()))
-                .regionOfASeenByB(GridUtils.resolveRegion(playerA.getPosCol(), playerA.getPosRow()))
+                .finalPositionA(new Position(playerA.getPosCol(), playerA.getPosRow()))
+                .finalPositionB(new Position(playerB.getPosCol(), playerB.getPosRow()))
+                .regionOfBSeenByA(GridUtils.resolveRegion(playerB.getPosCol(), playerB.getPosRow()).toLabel())
+                .regionOfASeenByB(GridUtils.resolveRegion(playerA.getPosCol(), playerA.getPosRow()).toLabel())
                 .impactAreaOfA(areaAtaqueA)
                 .impactAreaOfB(areaAtaqueB)
                 .gameOver(gameOver)
