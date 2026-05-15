@@ -108,6 +108,9 @@ public class TurnCoordinator {
         game.getPendingActions().clear();
         game.setFirstActionReceivedAt(0L);
 
+        // ── Persistir resultado para polling (SnapshotService) ───────────
+        game.setLastResolutionResult(result);
+
         // ── Actualizar estado de la partida ──────────────────────────────
         if (result.isGameOver()) {
             game.setStatus(GameStatus.FINISHED);
