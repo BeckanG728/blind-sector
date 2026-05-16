@@ -80,6 +80,37 @@ public class SnapshotService {
     }
 
     /**
+     * Devuelve el último {@link SnapshotDTO} resuelto para el endpoint de reconexión,
+     * independientemente de si el turno actual está en curso o no.
+     *
+     * <p>A diferencia de {@link #getSnapshot}, este método ignora el tamaño de
+     * {@code pendingActions} y accede directamente a {@code lastResolutionResult}.
+     * Si aún no se ha resuelto ningún turno ({@code lastResolutionResult == null}),
+     * retorna {@link Optional#empty()} para que el controller responda con el
+     * cuerpo de espera inicial.</p>
+     *
+     * @param gameId   identificador de la partida
+     * @param playerId jugador que consulta (perspectiva del snapshot)
+     * @return {@code Optional<SnapshotDTO>} con el último snapshot si existe,
+     *         o {@code Optional.empty()} si no hay ningún turno resuelto aún
+     * @throws es.game.blindsector.shared.exception.GameException si la partida no existe
+     */
+    public Optional<SnapshotDTO> getLastSnapshot(String gameId, String playerId) {
+        GameState game = gameMemoryStore.getOrThrow(gameId);
+
+        if (game.getLastResolutionResult() == null) {
+            return Optional.empty();
+        }
+
+        SnapshotDTO snapshot = snapshotFactory.buildSnapshot(
+                game,
+                game.getLastResolutionResult(),
+                playerId
+        );
+        return Optional.of(snapshot);
+    }
+
+    /**
      * Devuelve el {@link GameStatus} de la partida sin construir el SnapshotDTO completo.
      *
      * <p>Útil para comprobaciones ligeras (p.ej. saber si la partida ya terminó)
