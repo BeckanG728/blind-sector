@@ -1,7 +1,9 @@
 package es.game.blindsector.game.controller;
 
+import es.game.blindsector.game.domain.GameState;
 import es.game.blindsector.game.dto.SubmitActionRequest;
 import es.game.blindsector.game.service.TurnSubmissionService;
+import es.game.blindsector.infrastructure.memory.GameMemoryStore;
 import es.game.blindsector.snapshot.dto.SnapshotDTO;
 import es.game.blindsector.snapshot.factory.SnapshotFactory;
 import es.game.blindsector.turn.domain.TurnAction;
@@ -33,11 +35,14 @@ public class TurnController {
 
     private final TurnSubmissionService turnSubmissionService;
     private final SnapshotFactory snapshotFactory;
+    private final GameMemoryStore gameMemoryStore;
 
     public TurnController(TurnSubmissionService turnSubmissionService,
-                          SnapshotFactory snapshotFactory) {
+                          SnapshotFactory snapshotFactory,
+                          GameMemoryStore gameMemoryStore) {
         this.turnSubmissionService = turnSubmissionService;
         this.snapshotFactory = snapshotFactory;
+        this.gameMemoryStore = gameMemoryStore;
     }
 
     /**
@@ -68,8 +73,9 @@ public class TurnController {
         }
 
         // El turno fue resuelto: construimos el snapshot para este jugador
+        GameState game = gameMemoryStore.getOrThrow(request.gameId());
         SnapshotDTO snapshot = snapshotFactory.buildSnapshot(
-                turnSubmissionService.getGame(request.gameId()),
+                game,
                 result.getResolutionResult(),
                 request.playerId()
         );
