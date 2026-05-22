@@ -139,6 +139,11 @@ public class LobbyService {
                     + game.getStatus() + ").");
         }
 
+        if (game.getPlayerB() == null) {
+            throw new GameException(GameErrorCode.GAME_NOT_ACTIVE,
+                    "La partida " + gameId + " no puede iniciarse: falta el segundo jugador.");
+        }
+
         game.setStatus(GameStatus.ACTIVE);
         game.setTurnNumber(1);
 
