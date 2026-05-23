@@ -1,0 +1,194 @@
+@startuml BlindSector_Flujo
+
+title BlindSector - Flujo General del Juego
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam activity {
+    BackgroundColor #F8F9FC
+    BorderColor #5B5FC7
+    FontSize 13
+    ArrowColor #4B5563
+    StartColor #312E81
+    EndColor #312E81
+}
+skinparam partition {
+    BorderColor #D1D5DB
+    BackgroundColor #FAFAFA
+}
+skinparam note {
+    BackgroundColor #FEF3C7
+    BorderColor #D97706
+}
+skinparam defaultFontName Arial
+
+|#EEF2FF|Cliente|
+|#F0FAFA|GameMemoryStore|
+|#F0FDF4|LobbyService / TurnCoordinator|
+|#FFF7ED|MySQL|
+
+' =========================================================
+' FASE 1 - LOBBY
+' =========================================================
+
+|Cliente|
+start
+note right
+  Jugador A crea la partida y
+  comparte el gameId con Jugador B.
+  Hasta el start, todo vive solo en memoria.
+end note
+
+:POST /api/lobby/create\n{ playerId };
+
+|GameMemoryStore|
+' ancla de columna — no action
+
+|LobbyService / TurnCoordinator|
+:Generar gameId (UUID)
+Crear PlayerA (col=2, row=2, HP=100)
+Crear GameState (status=WAITING, turnNumber=0);
+
+|GameMemoryStore|
+:save(game);
+
+|LobbyService / TurnCoordinator|
+:Return CreateGameResponse\n{ gameId, playerAId, status=WAITING };
+
+|Cliente|
+:POST /api/lobby/join\n{ gameId, playerBId };
+
+|LobbyService / TurnCoordinator|
+:Validar: GAME_NOT_FOUND / GAME_FULL / SELF_JOIN
+Crear PlayerB (col=12, row=12, HP=100)
+Asignar PlayerB al GameState;
+
+|GameMemoryStore|
+:save(game);
+
+|LobbyService / TurnCoordinator|
+:Return JoinGameResponse\n{ gameId, playerAId, playerBId, status };
+
+|Cliente|
+:POST /api/lobby/start\n{ gameId };
+
+|LobbyService / TurnCoordinator|
+:Validar status=WAITING y playerB != null
+Set status = ACTIVE
+Set turnNumber = 1;
+
+|GameMemoryStore|
+:save(game);
+
+|MySQL|
+:INSERT games\n(gameId, playerAId, playerBId, status=ACTIVE);
+
+|LobbyService / TurnCoordinator|
+:Return StartGameResponse\n{ gameId, status=ACTIVE, turn=1 };
+
+' =========================================================
+' FASE 2 - LOOP DE TURNOS
+' =========================================================
+
+|Cliente|
+note right
+  Cada jugador envia su accion
+  de forma independiente.
+  El turno se resuelve cuando
+  ambas acciones son recibidas.
+end note
+
+while (partida activa?) is (si)
+
+  :POST /api/turn/submit\n{ gameId, playerId, turn, move, attack };
+
+  |GameMemoryStore|
+  :getOrThrow(gameId)
+  Retorna GameState activo;
+
+  |LobbyService / TurnCoordinator|
+  :Adquirir ReentrantLock
+  TurnValidator: status=ACTIVE, turn correcto, sin duplicado
+  MovementValidator: Chebyshev <= 4, dentro del tablero
+  AttackValidator: coordenadas 0..14;
+
+  if (pendingActions.size() == 1?) then (una sola accion recibida)
+
+    :Registrar firstActionReceivedAt
+    pendingActions.put(playerId, action)
+    Liberar lock;
+
+    |Cliente|
+    :HTTP 200 { received: true, waiting: true };
+
+  else (ambas acciones recibidas)
+
+    :pendingActions.put(playerId, action)
+    status = RESOLVING;
+
+    partition "TurnResolver.resolve()" {
+      :1. Aplicar movimientos (MovementEngine);
+      :2. Calcular areas de impacto 3x3 (ImpactResolver);
+      :3. Detectar HitResult: MISS / HIT / DIRECT HIT;
+      :4. Calcular danio: 25 HP (movio) o 35 HP (no movio = Sniper);
+      :5. Aplicar danio a cada PlayerState;
+      :6. turnNumber++;
+      :7. Evaluar gameOver y resolver winnerId;
+    }
+
+    :pendingActions.clear()
+    firstActionReceivedAt = 0
+    lastResolutionResult = result;
+
+    if (gameOver?) then (si)
+
+      :status = FINISHED
+      Liberar lock;
+
+      |MySQL|
+      :UPDATE games SET\nstatus=finished, winnerId, turnsPlayed;
+
+      |GameMemoryStore|
+      :remove(gameId)
+      Libera GameState y ReentrantLock;
+
+      |Cliente|
+      :Return SnapshotDTO\n{ status=FINISHED, winnerId,\nmyHp, myRegion, enemyRegion,\nhitOnMe, damageReceived };
+      stop
+
+    else (no)
+
+      :status = ACTIVE
+      Liberar lock;
+
+      |Cliente|
+      :Return SnapshotDTO\n{ status=ACTIVE,\nmyHp, myRegion, enemyRegion,\nhitOnMe, damageReceived };
+
+    endif
+  endif
+
+endwhile (no — partida terminada)
+
+stop
+
+' =========================================================
+' SCHEDULER (paralelo)
+' =========================================================
+floating note right
+  TurnTimeoutScheduler (cada 5 s)
+  --------------------------------
+  Condicion de disparo:
+  - status == ACTIVE
+  - pendingActions.size() == 1
+  - (now - firstActionReceivedAt) > 30 000 ms
+  --------------------------------
+  Accion: forceResolveTimeout()
+  -> Inyecta accion por defecto
+     para el jugador ausente:
+     move = posicion actual (sin mover)
+     attack = (-1,-1) -> MISS garantizado
+  -> El turno se resuelve normalmente
+end note
+
+@enduml
