@@ -1,6 +1,6 @@
 @startuml BlindSector_Flujo
 
-title BlindSector - Flujo General del Juego
+title BlindSector - Flujo General del Juego (v1.2 — sincronizado con código)
 
 skinparam backgroundColor white
 skinparam shadowing false
@@ -37,18 +37,15 @@ start
 note right
   Jugador A crea la partida y
   comparte el gameId con Jugador B.
-  Hasta el start, todo vive solo en memoria.
+  Hasta el /start, todo vive solo en memoria
+  (el INSERT en MySQL se difiere hasta /start,
+  cuando playerB ya existe).
 end note
 
 :POST /api/lobby/create\n{ playerId };
 
-|GameMemoryStore|
-' ancla de columna — no action
-
 |LobbyService / TurnCoordinator|
-:Generar gameId (UUID)
-Crear PlayerA (col=2, row=2, HP=100)
-Crear GameState (status=WAITING, turnNumber=0);
+:Generar gameId (UUID)\nCrear PlayerA (col=2, row=2, HP=100)\nCrear GameState (status=WAITING, turnNumber=0);
 
 |GameMemoryStore|
 :save(game);
@@ -57,12 +54,10 @@ Crear GameState (status=WAITING, turnNumber=0);
 :Return CreateGameResponse\n{ gameId, playerAId, status=WAITING };
 
 |Cliente|
-:POST /api/lobby/join\n{ gameId, playerBId };
+:POST /api/lobby/join\n{ gameId, playerId };
 
 |LobbyService / TurnCoordinator|
-:Validar: GAME_NOT_FOUND / GAME_FULL / SELF_JOIN
-Crear PlayerB (col=12, row=12, HP=100)
-Asignar PlayerB al GameState;
+:Validar: GAME_NOT_FOUND / GAME_FULL / SELF_JOIN\nCrear PlayerB (col=12, row=12, HP=100)\nAsignar PlayerB al GameState;
 
 |GameMemoryStore|
 :save(game);
@@ -74,18 +69,22 @@ Asignar PlayerB al GameState;
 :POST /api/lobby/start\n{ gameId };
 
 |LobbyService / TurnCoordinator|
-:Validar status=WAITING y playerB != null
-Set status = ACTIVE
-Set turnNumber = 1;
+:Validar status=WAITING y playerB != null\nSet status = ACTIVE\nSet turnNumber = 1;
 
 |GameMemoryStore|
 :save(game);
 
 |MySQL|
+note right
+  INSERT se hace aquí (/start) y no en /create,
+  porque en este punto playerB ya existe
+  y la fila tiene ambos IDs completos.
+  (LobbyService.start → gameRepository.save)
+end note
 :INSERT games\n(gameId, playerAId, playerBId, status=ACTIVE);
 
 |LobbyService / TurnCoordinator|
-:Return StartGameResponse\n{ gameId, status=ACTIVE, turn=1 };
+:Return StartGameResponse\n{ gameId, status=ACTIVE, turnNumber=1 };
 
 ' =========================================================
 ' FASE 2 - LOOP DE TURNOS
@@ -93,7 +92,7 @@ Set turnNumber = 1;
 
 |Cliente|
 note right
-  Cada jugador envia su accion
+  Cada jugador envía su acción
   de forma independiente.
   El turno se resuelve cuando
   ambas acciones son recibidas.
@@ -101,69 +100,58 @@ end note
 
 while (partida activa?) is (si)
 
-  :POST /api/turn/submit\n{ gameId, playerId, turn, move, attack };
+  :POST /api/turn/submit\n{ gameId, playerId, turn,\nmoveToCol, moveToRow,\nattackCol, attackRow };
 
   |GameMemoryStore|
-  :getOrThrow(gameId)
-  Retorna GameState activo;
+  :getOrThrow(gameId)\nRetorna GameState activo;
 
   |LobbyService / TurnCoordinator|
-  :Adquirir ReentrantLock
-  TurnValidator: status=ACTIVE, turn correcto, sin duplicado
-  MovementValidator: Chebyshev <= 4, dentro del tablero
-  AttackValidator: coordenadas 0..14;
+  :Adquirir ReentrantLock (LockExecutor)\nTurnValidator: status=ACTIVE, turn correcto, sin duplicado\nMovementValidator: Chebyshev <= 4, dentro del tablero (0-14)\nAttackValidator: centro de ataque en 0..14;
 
   if (pendingActions.size() == 1?) then (una sola accion recibida)
 
-    :Registrar firstActionReceivedAt
-    pendingActions.put(playerId, action)
-    Liberar lock;
+    :Registrar firstActionReceivedAt\npendingActions.put(playerId, action)\nLiberar lock;
 
     |Cliente|
     :HTTP 200 { received: true, waiting: true };
 
   else (ambas acciones recibidas)
 
-    :pendingActions.put(playerId, action)
-    status = RESOLVING;
+    :pendingActions.put(playerId, action)\nstatus = RESOLVING;
 
     partition "TurnResolver.resolve()" {
-      :1. Aplicar movimientos (MovementEngine);
-      :2. Calcular areas de impacto 3x3 (ImpactResolver);
-      :3. Detectar HitResult: MISS / HIT / DIRECT HIT;
-      :4. Calcular danio: 25 HP (movio) o 35 HP (no movio = Sniper);
-      :5. Aplicar danio a cada PlayerState;
-      :6. turnNumber++;
-      :7. Evaluar gameOver y resolver winnerId;
+      :1. Guardar posiciones originales (para detectar si hubo movimiento);
+      :2. Aplicar movimientos de ambos jugadores (MovementEngine);
+      :3. Calcular áreas de impacto 3x3 (ImpactResolver);
+      :4. Detectar HitResult: MISS / HIT / DIRECT_HIT\n   (sobre posición FINAL, tras movimiento);
+      :5. Calcular daño: 25 HP (movió) o 35 HP (no movió = Sniper);
+      :6. Aplicar daño a cada PlayerState (HP = max(0, HP - daño));
+      :7. turnNumber++;
+      :8. Evaluar gameOver (HP <= 0) y resolver winnerId\n   (null=sigue / "draw"=empate / playerId=ganador);
     }
 
-    :pendingActions.clear()
-    firstActionReceivedAt = 0
-    lastResolutionResult = result;
+    :pendingActions.clear()\nfirstActionReceivedAt = 0\nlastResolutionResult = result;
 
     if (gameOver?) then (si)
 
-      :status = FINISHED
-      Liberar lock;
+      :status = FINISHED\nLiberar lock;
 
       |MySQL|
-      :UPDATE games SET\nstatus=finished, winnerId, turnsPlayed;
+      :UPDATE games SET\nstatus=FINISHED, winnerId, turnsPlayed\n(GameLifecycleService.finalize);
 
       |GameMemoryStore|
-      :remove(gameId)
-      Libera GameState y ReentrantLock;
+      :remove(gameId)\nLibera GameState y ReentrantLock;
 
       |Cliente|
-      :Return SnapshotDTO\n{ status=FINISHED, winnerId,\nmyHp, myRegion, enemyRegion,\nhitOnMe, damageReceived };
+      :Return SnapshotDTO\n{ gameId, turn, status=FINISHED, winnerId,\nmyHp, myCol, myRow, myRegion,\nenemyRegion, hitOnMe, damageReceived,\nhitOnEnemy, myAttackArea, impactAreaReceived };
       stop
 
     else (no)
 
-      :status = ACTIVE
-      Liberar lock;
+      :status = ACTIVE\nLiberar lock;
 
       |Cliente|
-      :Return SnapshotDTO\n{ status=ACTIVE,\nmyHp, myRegion, enemyRegion,\nhitOnMe, damageReceived };
+      :Return SnapshotDTO\n{ gameId, turn, status=ACTIVE,\nmyHp, myCol, myRow, myRegion,\nenemyRegion, hitOnMe, damageReceived,\nhitOnEnemy, myAttackArea, impactAreaReceived };
 
     endif
   endif
@@ -176,19 +164,25 @@ stop
 ' SCHEDULER (paralelo)
 ' =========================================================
 floating note right
-  TurnTimeoutScheduler (cada 5 s)
-  --------------------------------
+  TurnTimeoutScheduler (cada 5 s — configurable)
+  ------------------------------------------------
   Condicion de disparo:
   - status == ACTIVE
   - pendingActions.size() == 1
   - (now - firstActionReceivedAt) > 30 000 ms
-  --------------------------------
-  Accion: forceResolveTimeout()
-  -> Inyecta accion por defecto
-     para el jugador ausente:
+  ------------------------------------------------
+  Accion: TurnTimeoutService.forceResolveTimeout()
+  -> Verificar condicion DENTRO del lock
+     (evita race condition si el turno se
+     resolvio entre la deteccion y el lock)
+  -> Identificar jugador ausente
+  -> Inyectar accion por defecto:
      move = posicion actual (sin mover)
      attack = (-1,-1) -> MISS garantizado
+     [AttackValidator se bypasea para
+      acciones de timeout — decision de diseno]
   -> El turno se resuelve normalmente
+     via TurnCoordinator (ReentrantLock reentrante)
 end note
 
 @enduml
