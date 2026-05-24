@@ -1,10 +1,12 @@
 package es.game.blindsector.lobby.controller;
 
+import es.game.blindsector.infrastructure.memory.GameMemoryStore;
 import es.game.blindsector.lobby.dto.request.CreateGameRequest;
 import es.game.blindsector.lobby.dto.request.JoinGameRequest;
 import es.game.blindsector.lobby.dto.request.StartGameRequest;
 import es.game.blindsector.lobby.dto.response.CreateGameResponse;
 import es.game.blindsector.lobby.dto.response.JoinGameResponse;
+import es.game.blindsector.lobby.dto.response.LobbyStatusResponse;
 import es.game.blindsector.lobby.dto.response.StartGameResponse;
 import es.game.blindsector.lobby.service.LobbyService;
 import org.springframework.http.ResponseEntity;
@@ -23,9 +25,11 @@ import org.springframework.web.bind.annotation.*;
 public class LobbyController {
 
     private final LobbyService lobbyService;
+    private final GameMemoryStore gameMemoryStore;
 
-    public LobbyController(LobbyService lobbyService) {
+    public LobbyController(LobbyService lobbyService, GameMemoryStore gameMemoryStore) {
         this.lobbyService = lobbyService;
+        this.gameMemoryStore = gameMemoryStore;
     }
 
     /**
@@ -59,6 +63,24 @@ public class LobbyController {
     @PostMapping("/start")
     public ResponseEntity<StartGameResponse> start(@RequestBody StartGameRequest request) {
         return ResponseEntity.ok(lobbyService.start(request.getGameId()));
+    }
+
+    /**
+     * Polling del estado del lobby: permite a ambos jugadores detectar
+     * cuándo se unió el rival y cuándo la partida fue iniciada.
+     *
+     * @param gameId identificador de la partida.
+     * @return {@link LobbyStatusResponse} con playerAId, playerBId (nullable) y status.
+     */
+    @GetMapping("/{gameId}/status")
+    public ResponseEntity<LobbyStatusResponse> lobbyStatus(@PathVariable String gameId) {
+        var game = gameMemoryStore.getOrThrow(gameId);
+        return ResponseEntity.ok(new LobbyStatusResponse(
+                game.getGameId(),
+                game.getPlayerA().getPlayerId(),
+                game.getPlayerB() != null ? game.getPlayerB().getPlayerId() : null,
+                game.getStatus()
+        ));
     }
 }
 

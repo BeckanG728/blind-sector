@@ -67,7 +67,7 @@ public class LobbyService {
         GameState game = new GameState(gameId, GameStatus.WAITING, 0, playerA, null);
 
         gameMemoryStore.save(game);
-        gameRepository.save(GameMapper.toEntity(game));
+        // El INSERT en MySQL se difiere hasta /start, cuando playerB ya existe.
 
         return new CreateGameResponse(gameId, playerId, GameStatus.WAITING);
     }
@@ -148,6 +148,9 @@ public class LobbyService {
         game.setTurnNumber(1);
 
         gameMemoryStore.save(game);
+
+        // INSERT en MySQL ahora que ambos jugadores existen y la partida está activa
+        gameRepository.save(GameMapper.toEntity(game));
 
         return new StartGameResponse(game.getGameId(), GameStatus.ACTIVE, 1);
     }
