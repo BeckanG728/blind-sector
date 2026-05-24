@@ -70,6 +70,11 @@ public class SnapshotService {
             return Optional.empty();
         }
 
+        // Aún no se ha resuelto ningún turno (inicio de partida)
+        if (game.getLastResolutionResult() == null) {
+            return Optional.empty();
+        }
+
         // Turno resuelto (pendingActions vacío) — construir snapshot con el último resultado
         SnapshotDTO snapshot = snapshotFactory.buildSnapshot(
                 game,
