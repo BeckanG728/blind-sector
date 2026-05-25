@@ -20,7 +20,7 @@ public class GameLifecycleService {
 
     /**
      * Finaliza formalmente una partida guardando los resultados en MySQL
-     * y liberando la memoria caché.
+     * pero MANTIENE el objeto en memoria temporalmente para que los clientes lean el final.
      */
     @Transactional
     public void finalize(String gameId, String winnerId, int turnsPlayed) {
@@ -28,7 +28,6 @@ public class GameLifecycleService {
         String finalWinner = (winnerId == null) ? "draw" : winnerId;
 
         // 2. Buscamos la entidad existente para poder actualizarla
-        // (Si por alguna razón no existiera, se lanza una excepción)
         GameEntity existingEntity = gameRepository.findById(gameId)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró la partida en la base de datos con el ID: " + gameId));
 
@@ -38,8 +37,8 @@ public class GameLifecycleService {
         // 4. Criterio de aceptación: Ejecuta el UPDATE en MySQL vía GameRepository
         gameRepository.save(finishedEntity);
 
-        // 5. Criterio de aceptación: Después del UPDATE, llama a GameMemoryStore.remove(gameId)
-        // Nota: Es idempotente por diseño en la memoria, si no existe no lanzará excepción.
-        gameMemoryStore.remove(gameId);
+        // 5. CORRECCIÓN: NO remover de inmediato para evitar romper el Polling del rival.
+        // Se comenta esta línea para que permanezca accesible en el GameMemoryStore:
+        // gameMemoryStore.remove(gameId);
     }
 }
