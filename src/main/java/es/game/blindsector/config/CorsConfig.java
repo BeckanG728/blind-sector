@@ -19,7 +19,7 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 // Criterio: Permite peticiones desde el origen configurado en application.properties
                 registry.addMapping("/**")
-                        .allowedOrigins(allowedOrigins)
+                        .allowedOrigins(allowedOrigins.split(","))
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true);
