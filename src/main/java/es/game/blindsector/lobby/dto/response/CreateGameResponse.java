@@ -14,4 +14,8 @@ public class CreateGameResponse {
     private String gameId;
     private String playerAId;
     private GameStatus status;
+    /** Columna inicial asignada aleatoriamente a playerA. */
+    private Integer spawnCol;
+    /** Fila inicial asignada aleatoriamente a playerA. */
+    private Integer spawnRow;
 }
