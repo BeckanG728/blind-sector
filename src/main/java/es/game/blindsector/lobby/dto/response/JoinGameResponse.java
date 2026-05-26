@@ -15,4 +15,8 @@ public class JoinGameResponse {
     private String playerAId;
     private String playerBId;
     private GameStatus status;
+    /** Columna inicial asignada aleatoriamente a playerB. */
+    private Integer spawnCol;
+    /** Fila inicial asignada aleatoriamente a playerB. */
+    private Integer spawnRow;
 }

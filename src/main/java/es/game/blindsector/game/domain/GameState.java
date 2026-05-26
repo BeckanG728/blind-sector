@@ -22,6 +22,12 @@ public class GameState {
     private PlayerState playerA;
     private PlayerState playerB;
 
+    /**
+     * Spawn reservado para playerB en el momento en que playerA crea la partida.
+     * Se consume cuando playerB hace join y se puede dejar null tras ese momento.
+     */
+    private Position pendingSpawnB;
+
     // No expuesto con setter para evitar reemplazos accidentales
     private final ConcurrentHashMap<String, TurnAction> pendingActions = new ConcurrentHashMap<>();
     private final ReentrantLock lock = new ReentrantLock();
@@ -32,7 +38,7 @@ public class GameState {
      *  SnapshotService pueda construir el SnapshotDTO en modo polling,
      *  sin necesidad de recalcular nada. Se sobreescribe en cada resolución. */
     private TurnResolutionResult lastResolutionResult;
-    
+
     public GameState(String gameId, GameStatus status, int turnNumber,
                      PlayerState playerA, PlayerState playerB) {
         this.gameId = gameId;

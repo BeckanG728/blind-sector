@@ -1,6 +1,7 @@
 package es.game.blindsector.lobby.service;
 
 import es.game.blindsector.game.domain.GameState;
+import es.game.blindsector.game.domain.Position;
 import es.game.blindsector.infrastructure.memory.GameMemoryStore;
 import es.game.blindsector.lobby.dto.response.CreateGameResponse;
 import es.game.blindsector.lobby.dto.response.JoinGameResponse;
@@ -11,8 +12,10 @@ import es.game.blindsector.player.domain.PlayerState;
 import es.game.blindsector.shared.enums.GameErrorCode;
 import es.game.blindsector.shared.enums.GameStatus;
 import es.game.blindsector.shared.exception.GameException;
+import es.game.blindsector.shared.utils.SpawnUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -62,14 +65,22 @@ public class LobbyService {
     public CreateGameResponse create(String playerId) {
         String gameId = UUID.randomUUID().toString();
 
-        PlayerState playerA = new PlayerState(playerId, 2, 2);
+        // Sortear las dos posiciones de spawn para esta partida;
+        // playerA recibe la primera, playerB recibirá la segunda al unirse.
+        List<Position> spawns = SpawnUtils.pickTwoSpawns();
+        Position spawnA = spawns.get(0);
+        Position spawnB = spawns.get(1);
+
+        PlayerState playerA = new PlayerState(playerId, spawnA.col(), spawnA.row());
 
         GameState game = new GameState(gameId, GameStatus.WAITING, 0, playerA, null);
+        // Guardamos el spawn de B en el estado para recuperarlo cuando playerB haga join
+        game.setPendingSpawnB(spawnB);
 
         gameMemoryStore.save(game);
-        // El INSERT en MySQL se difiere hasta /start, cuando playerB ya existe.
 
-        return new CreateGameResponse(gameId, playerId, GameStatus.WAITING);
+        return new CreateGameResponse(gameId, playerId, GameStatus.WAITING,
+                spawnA.col(), spawnA.row());
     }
 
     // -------------------------------------------------------------------------
@@ -91,7 +102,6 @@ public class LobbyService {
      * @return {@link JoinGameResponse} con los IDs de ambos jugadores y el status actual.
      */
     public JoinGameResponse join(String gameId, String playerId) {
-        // Recupera o lanza GAME_NOT_FOUND si no existe en memoria
         GameState game = gameMemoryStore.getOrThrow(gameId);
 
         if (game.getPlayerB() != null) {
@@ -104,7 +114,10 @@ public class LobbyService {
                     "El jugador " + playerId + " ya es playerA en esta partida.");
         }
 
-        PlayerState playerB = new PlayerState(playerId, 12, 12);
+        // Recuperar el spawn reservado para playerB al momento de crear la partida
+        Position spawnB = game.getPendingSpawnB();
+
+        PlayerState playerB = new PlayerState(playerId, spawnB.col(), spawnB.row());
         game.setPlayerB(playerB);
 
         gameMemoryStore.save(game);
@@ -113,7 +126,9 @@ public class LobbyService {
                 game.getGameId(),
                 game.getPlayerA().getPlayerId(),
                 game.getPlayerB().getPlayerId(),
-                game.getStatus()
+                game.getStatus(),
+                spawnB.col(),
+                spawnB.row()
         );
     }
 
