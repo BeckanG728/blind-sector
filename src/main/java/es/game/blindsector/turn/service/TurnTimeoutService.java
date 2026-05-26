@@ -106,10 +106,10 @@ public class TurnTimeoutService {
         // ── Construir acción por defecto ─────────────────────────────────
         TurnAction defaultAction = buildDefaultAction(absentPlayer, game.getTurnNumber());
 
-        // ── Delegar resolución al coordinador ────────────────────────────
-        // TurnCoordinator intentará adquirir el lock, pero LockExecutor usa
-        // ReentrantLock (reentrant), por lo que el mismo thread puede re-entrar.
-        turnCoordinator.submitAction(game, defaultAction);
+        // ── Delegar resolución al coordinador (bypass de validaciones) ───
+        // Se usa resolveTurnForTimeout() en lugar de submitAction() para evitar
+        // que AttackValidator rechace el punto (-1,-1) de la acción por defecto.
+        turnCoordinator.resolveTurnForTimeout(game, defaultAction);
     }
 
     // ── Helpers privados ─────────────────────────────────────────────────
@@ -130,20 +130,11 @@ public class TurnTimeoutService {
     /**
      * Construye una acción neutral para el jugador ausente:
      *   - Se queda en su posición actual (sin movimiento)
-     *   - Ataca a (-1, -1), que siempre resulta en MISS al estar fuera del tablero
-
+     *   - Ataca a (-1, -1) → siempre resulta en MISS en ImpactResolver
+     *
      * El punto de ataque (-1, -1) es intencionadamente inválido para garantizar
-     * MISS sin necesidad de lógica adicional en ImpactResolver.
-     * AttackValidator NO se llama para acciones de timeout — se bypasea
-     * a través de pendingActions.put directamente en el coordinador,
-     * o se usa un ataque fuera de tablero que ImpactResolver interpreta como MISS.
-
-     * Nota: si AttackValidator rechaza (-1,-1), la acción por defecto debe
-     * construirse con un punto de ataque válido pero dirigido a una celda
-     * imposible de contener al rival (ej. la propia posición del jugador ausente
-     * si el rival está lejos). La implementación final depende del comportamiento
-     * acordado en equipo para timeouts. El valor por defecto aquí es (-1,-1)
-     * como señal explícita de "acción de timeout".
+     * MISS sin lógica adicional. Esta acción NO pasa por AttackValidator;
+     * se inyecta directamente a través de TurnCoordinator.resolveTurnForTimeout().
      */
     private TurnAction buildDefaultAction(PlayerState absentPlayer, int currentTurn) {
         TurnAction defaultAction = new TurnAction();

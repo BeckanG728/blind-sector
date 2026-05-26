@@ -27,6 +27,10 @@ import org.springframework.stereotype.Component;
  *   4a. Si pendingActions.size() == 1 → retornar waiting=true
  *   4b. Si pendingActions.size() == 2 → resolver el turno y retornar resolved=true
 
+ * Para acciones de timeout (TurnTimeoutService) se usa resolveTurnForTimeout(),
+ * que bypasea las validaciones e inyecta la acción directamente en pendingActions
+ * antes de resolver. Debe llamarse desde dentro del lock de la partida.
+
  * Responsabilidades fuera del scope:
  *   - Cargar GameState desde memoria (TurnSubmissionService)
  *   - Persistir el resultado final (GameLifecycleService)
@@ -119,6 +123,47 @@ public class TurnCoordinator {
         }
 
         return TurnCoordinatorResult.resolved(result);
+    }
+
+    // ── API para timeout (sin validaciones) ──────────────────────────────
+
+    /**
+     * Inyecta una acción de timeout directamente en {@code pendingActions} y,
+     * si con ella se completan las dos acciones del turno, lo resuelve.
+     *
+     * <p>Este método bypasea todas las validaciones ({@link es.game.blindsector.game.validation.TurnValidator},
+     * {@link es.game.blindsector.game.validation.MovementValidator},
+     * {@link es.game.blindsector.game.validation.AttackValidator}) porque la acción
+     * fue construida internamente por {@link TurnTimeoutService} y no proviene
+     * de un jugador. En particular, el punto de ataque {@code (-1, -1)} es
+     * intencionadamente inválido para garantizar MISS en {@code ImpactResolver}.
+     *
+     * <p><b>Precondición:</b> debe llamarse desde dentro del lock de la partida
+     * (ya adquirido por {@link TurnTimeoutService}). {@link LockExecutor} usa
+     * {@link java.util.concurrent.locks.ReentrantLock}, por lo que el mismo
+     * thread puede re-entrar sin bloquearse.
+     *
+     * @param game          estado de la partida, ya bajo lock
+     * @param timeoutAction acción por defecto construida por TurnTimeoutService
+     * @return {@link TurnCoordinatorResult#waiting()} si aún falta la otra acción,
+     *         o {@link TurnCoordinatorResult#resolved(TurnResolutionResult)} si el turno se resolvió
+     */
+    TurnCoordinatorResult resolveTurnForTimeout(GameState game, TurnAction timeoutAction) {
+        return lockExecutor.executeWithLock(game, () -> {
+
+            // ── Inyectar sin validar ─────────────────────────────────────
+            if (game.getPendingActions().isEmpty()) {
+                game.setFirstActionReceivedAt(System.currentTimeMillis());
+            }
+            game.getPendingActions().put(timeoutAction.getPlayerId(), timeoutAction);
+
+            // ── ¿Tenemos las dos acciones? ───────────────────────────────
+            if (game.getPendingActions().size() < 2) {
+                return TurnCoordinatorResult.waiting();
+            }
+
+            return resolveTurn(game);
+        });
     }
 
     // ── Helper ───────────────────────────────────────────────────────────
