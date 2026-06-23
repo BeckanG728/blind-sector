@@ -1,43 +1,46 @@
 package es.game.blindsector.turn.service;
 
-import es.game.blindsector.game.domain.GameState;
-import es.game.blindsector.game.engine.DamageCalculator;
-import es.game.blindsector.game.engine.ImpactResolver;
-import es.game.blindsector.game.engine.MovementEngine;
-import es.game.blindsector.game.engine.TurnResolver;
-import es.game.blindsector.game.validation.AttackValidator;
-import es.game.blindsector.game.validation.MovementValidator;
-import es.game.blindsector.game.validation.TurnValidator;
+import es.game.blindsector.application.service.TurnCoordinatorService;
+import es.game.blindsector.application.service.TurnTimeoutService;
+import es.game.blindsector.domain.game.GameState;
+import es.game.blindsector.domain.player.PlayerState;
+import es.game.blindsector.domain.turn.TurnAction;
+import es.game.blindsector.engine.DamageCalculator;
+import es.game.blindsector.engine.ImpactResolver;
+import es.game.blindsector.engine.MovementEngine;
+import es.game.blindsector.engine.TurnResolver;
+import es.game.blindsector.engine.validation.AttackValidator;
+import es.game.blindsector.engine.validation.MovementValidator;
+import es.game.blindsector.engine.validation.TurnValidator;
 import es.game.blindsector.infrastructure.lock.GameLockManager;
 import es.game.blindsector.infrastructure.lock.LockExecutor;
-import es.game.blindsector.infrastructure.memory.GameMemoryStore;
 import es.game.blindsector.infrastructure.memory.ActiveGamesRegistry;
-import es.game.blindsector.player.domain.PlayerState;
+import es.game.blindsector.infrastructure.memory.GameMemoryStore;
 import es.game.blindsector.shared.enums.GameStatus;
-import es.game.blindsector.turn.domain.TurnAction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
  * Tests unitarios de TurnTimeoutService.
  * Sin Spring context — instancias directas de todas las dependencias.
-
+ * <p>
  * Escenarios cubiertos (criterios de aceptación P2-07):
- *  - Timeout exitoso: turno forzado cuando hay exactamente 1 acción pendiente
- *  - timeout_ignorado_si_turno_ya_resuelto: pendingActions.size()==2 o status!=ACTIVE
- *  - Partida inexistente: retorna sin error
- *  - Partida ya terminada (FINISHED): retorna sin error
- *  - El jugador correcto es el que recibe la acción por defecto
+ * - Timeout exitoso: turno forzado cuando hay exactamente 1 acción pendiente
+ * - timeout_ignorado_si_turno_ya_resuelto: pendingActions.size()==2 o status!=ACTIVE
+ * - Partida inexistente: retorna sin error
+ * - Partida ya terminada (FINISHED): retorna sin error
+ * - El jugador correcto es el que recibe la acción por defecto
  */
 class TurnTimeoutServiceTest {
 
     private TurnTimeoutService timeoutService;
-    private GameMemoryStore    memoryStore;
-    private TurnCoordinator    coordinator;
+    private GameMemoryStore memoryStore;
+    private TurnCoordinatorService coordinator;
 
     @BeforeEach
     void setUp() {
@@ -46,7 +49,7 @@ class TurnTimeoutServiceTest {
 
         LockExecutor lockExecutor = new LockExecutor(new GameLockManager());
 
-        coordinator = new TurnCoordinator(
+        coordinator = new TurnCoordinatorService(
                 new TurnValidator(),
                 new MovementValidator(),
                 new AttackValidator(),
@@ -64,7 +67,7 @@ class TurnTimeoutServiceTest {
     private GameState buildAndRegisterGame(String gameId) {
         PlayerState playerA = new PlayerState("player-a", 2, 2);
         PlayerState playerB = new PlayerState("player-b", 12, 12);
-        GameState game = new GameState(gameId, GameStatus.ACTIVE,1,playerA, playerB);
+        GameState game = new GameState(gameId, GameStatus.ACTIVE, 1, playerA, playerB);
         memoryStore.save(game);
         return game;
     }

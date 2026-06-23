@@ -1,24 +1,25 @@
 package es.game.blindsector.game.engine;
 
-import es.game.blindsector.player.domain.PlayerState;
+import es.game.blindsector.domain.player.PlayerState;
+import es.game.blindsector.engine.DamageCalculator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests unitarios de DamageCalculator.
  * Sin Spring context — instancia directa.
-
+ * <p>
  * Escenarios cubiertos (según criterios de aceptación P2-03):
- *  - calculateDamage: daño estándar (25) cuando el jugador se movió
- *  - calculateDamage: bono Sniper (35) cuando el jugador no se movió
- *  - applyDamage: reducción normal de HP
- *  - applyDamage: reducción que lleva el HP exactamente a 0
- *  - applyDamage: reducción que sobrepasa 0 → clamp a 0
- *  - applyDamage: daño 0 no modifica el HP
+ * - calculateDamage: daño estándar (25) cuando el jugador se movió
+ * - calculateDamage: bono Sniper (35) cuando el jugador no se movió
+ * - applyDamage: reducción normal de HP
+ * - applyDamage: reducción que lleva el HP exactamente a 0
+ * - applyDamage: reducción que sobrepasa 0 → clamp a 0
+ * - applyDamage: daño 0 no modifica el HP
  */
 class DamageCalculatorTest {
 
@@ -54,7 +55,7 @@ class DamageCalculatorTest {
         @Test
         @DisplayName("El diferencial entre Sniper y estándar es exactamente 10 HP")
         void diferencialSniperEsDiezPuntos() {
-            int moved    = calculator.calculateDamage(true);
+            int moved = calculator.calculateDamage(true);
             int notMoved = calculator.calculateDamage(false);
             assertThat(notMoved - moved).isEqualTo(10);
         }

@@ -1,24 +1,26 @@
 package es.game.blindsector.game.service;
 
-import es.game.blindsector.game.domain.GameState;
-import es.game.blindsector.game.engine.DamageCalculator;
-import es.game.blindsector.game.engine.ImpactResolver;
-import es.game.blindsector.game.engine.MovementEngine;
-import es.game.blindsector.game.engine.TurnResolver;
-import es.game.blindsector.game.validation.AttackValidator;
-import es.game.blindsector.game.validation.MovementValidator;
-import es.game.blindsector.game.validation.TurnValidator;
+import es.game.blindsector.application.service.GameLifecycleService;
+import es.game.blindsector.application.service.TurnCoordinatorService;
+import es.game.blindsector.application.service.TurnSubmissionService;
+import es.game.blindsector.domain.game.GameState;
+import es.game.blindsector.domain.player.PlayerState;
+import es.game.blindsector.domain.turn.TurnAction;
+import es.game.blindsector.domain.turn.TurnCoordinatorResult;
+import es.game.blindsector.engine.DamageCalculator;
+import es.game.blindsector.engine.ImpactResolver;
+import es.game.blindsector.engine.MovementEngine;
+import es.game.blindsector.engine.TurnResolver;
+import es.game.blindsector.engine.validation.AttackValidator;
+import es.game.blindsector.engine.validation.MovementValidator;
+import es.game.blindsector.engine.validation.TurnValidator;
 import es.game.blindsector.infrastructure.lock.GameLockManager;
 import es.game.blindsector.infrastructure.lock.LockExecutor;
 import es.game.blindsector.infrastructure.memory.ActiveGamesRegistry;
 import es.game.blindsector.infrastructure.memory.GameMemoryStore;
-import es.game.blindsector.player.domain.PlayerState;
 import es.game.blindsector.shared.enums.GameErrorCode;
 import es.game.blindsector.shared.enums.GameStatus;
 import es.game.blindsector.shared.exception.GameException;
-import es.game.blindsector.turn.domain.TurnAction;
-import es.game.blindsector.turn.domain.TurnCoordinatorResult;
-import es.game.blindsector.turn.service.TurnCoordinator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -27,23 +29,24 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.Mockito.*;
 
 /**
  * Tests unitarios de TurnSubmissionService.
-
+ * <p>
  * Estrategia de test:
- *   - GameLifecycleService se mockea (es de Persona 1 — P1-06 — y su
- *     comportamiento ya está testeado en su propia suite).
- *   - GameMemoryStore y TurnCoordinator usan instancias reales para
- *     verificar que la orquestación conecta correctamente las capas.
-
+ * - GameLifecycleService se mockea (es de Persona 1 — P1-06 — y su
+ * comportamiento ya está testeado en su propia suite).
+ * - GameMemoryStore y TurnCoordinatorService usan instancias reales para
+ * verificar que la orquestación conecta correctamente las capas.
+ * <p>
  * Lo que se verifica aquí es la ORQUESTACIÓN, no la lógica interna:
- *   - ¿Se llama a finalize cuando gameOver==true?
- *   - ¿NO se llama a finalize cuando waiting==true?
- *   - ¿Se propagan las GameException sin modificar?
- *   - ¿Se pasan los parámetros correctos a finalize?
+ * - ¿Se llama a finalize cuando gameOver==true?
+ * - ¿NO se llama a finalize cuando waiting==true?
+ * - ¿Se propagan las GameException sin modificar?
+ * - ¿Se pasan los parámetros correctos a finalize?
  */
 @ExtendWith(MockitoExtension.class)
 class TurnSubmissionServiceTest {
@@ -51,8 +54,8 @@ class TurnSubmissionServiceTest {
     @Mock
     private GameLifecycleService gameLifecycleService;
 
-    private GameMemoryStore      memoryStore;
-    private TurnCoordinator      coordinator;
+    private GameMemoryStore memoryStore;
+    private TurnCoordinatorService coordinator;
     private TurnSubmissionService submissionService;
 
     @BeforeEach
@@ -61,7 +64,7 @@ class TurnSubmissionServiceTest {
         memoryStore = new GameMemoryStore(registry);
 
         LockExecutor lockExecutor = new LockExecutor(new GameLockManager());
-        coordinator = new TurnCoordinator(
+        coordinator = new TurnCoordinatorService(
                 new TurnValidator(),
                 new MovementValidator(),
                 new AttackValidator(),
@@ -86,7 +89,7 @@ class TurnSubmissionServiceTest {
         PlayerState p = new PlayerState();
         PlayerState playerA = new PlayerState("player-a", 2, 2);
         PlayerState playerB = new PlayerState("player-b", 12, 12);
-        GameState game = new GameState(gameId, GameStatus.ACTIVE,1,playerA, playerB);
+        GameState game = new GameState(gameId, GameStatus.ACTIVE, 1, playerA, playerB);
         memoryStore.save(game);
         return game;
     }
@@ -200,7 +203,7 @@ class TurnSubmissionServiceTest {
             );
 
             if (result.getResolutionResult().isGameOver()
-                    && result.getResolutionResult().getWinnerId() == null) {
+                && result.getResolutionResult().getWinnerId() == null) {
                 verify(gameLifecycleService).finalize(eq("game-1"), isNull(), anyInt());
             }
             // Si el empate no ocurrió por posiciones exactas, el test pasa igualmente

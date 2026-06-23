@@ -1,19 +1,16 @@
 package es.game.blindsector.lobby;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import es.game.blindsector.api.dto.request.CreateGameRequest;
+import es.game.blindsector.api.dto.request.JoinGameRequest;
+import es.game.blindsector.api.dto.request.StartGameRequest;
 import es.game.blindsector.infrastructure.memory.ActiveGamesRegistry;
-import es.game.blindsector.lobby.dto.request.CreateGameRequest;
-import es.game.blindsector.lobby.dto.request.JoinGameRequest;
-import es.game.blindsector.lobby.dto.request.StartGameRequest;
-import es.game.blindsector.persistence.repository.GameRepository;
+import es.game.blindsector.infrastructure.persistence.repository.GameRepository;
 import es.game.blindsector.shared.enums.GameStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
-import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
-import org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;

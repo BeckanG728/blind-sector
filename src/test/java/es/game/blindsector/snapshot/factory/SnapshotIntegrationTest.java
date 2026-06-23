@@ -1,14 +1,12 @@
 package es.game.blindsector.snapshot.factory;
 
-import es.game.blindsector.game.domain.GameState;
-import es.game.blindsector.game.domain.ImpactArea;
-import es.game.blindsector.game.domain.Position;
-import es.game.blindsector.player.domain.PlayerState;
+import es.game.blindsector.api.dto.response.SnapshotResponse;
+import es.game.blindsector.domain.game.GameState;
+import es.game.blindsector.domain.game.ImpactArea;
+import es.game.blindsector.domain.player.PlayerState;
+import es.game.blindsector.domain.turn.TurnResolutionResult;
 import es.game.blindsector.shared.enums.GameStatus;
 import es.game.blindsector.shared.enums.HitResult;
-import es.game.blindsector.snapshot.dto.PositionDTO;
-import es.game.blindsector.snapshot.dto.SnapshotDTO;
-import es.game.blindsector.turn.domain.TurnResolutionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,14 +61,14 @@ class SnapshotIntegrationTest {
 
         // A atacó alrededor de (10,10); B atacó alrededor de (3,3)
         ImpactArea impactAreaA = new ImpactArea(List.of(
-                new Position(9, 9), new Position(10, 9), new Position(11, 9),
-                new Position(9, 10), new Position(10, 10), new Position(11, 10),
-                new Position(9, 11), new Position(10, 11), new Position(11, 11)
+                new es.game.blindsector.domain.game.Position(9, 9), new es.game.blindsector.domain.game.Position(10, 9), new es.game.blindsector.domain.game.Position(11, 9),
+                new es.game.blindsector.domain.game.Position(9, 10), new es.game.blindsector.domain.game.Position(10, 10), new es.game.blindsector.domain.game.Position(11, 10),
+                new es.game.blindsector.domain.game.Position(9, 11), new es.game.blindsector.domain.game.Position(10, 11), new es.game.blindsector.domain.game.Position(11, 11)
         ));
         ImpactArea impactAreaB = new ImpactArea(List.of(
-                new Position(2, 2), new Position(3, 2), new Position(4, 2),
-                new Position(2, 3), new Position(3, 3), new Position(4, 3),
-                new Position(2, 4), new Position(3, 4), new Position(4, 4)
+                new es.game.blindsector.domain.game.Position(2, 2), new es.game.blindsector.domain.game.Position(3, 2), new es.game.blindsector.domain.game.Position(4, 2),
+                new es.game.blindsector.domain.game.Position(2, 3), new es.game.blindsector.domain.game.Position(3, 3), new es.game.blindsector.domain.game.Position(4, 3),
+                new es.game.blindsector.domain.game.Position(2, 4), new es.game.blindsector.domain.game.Position(3, 4), new es.game.blindsector.domain.game.Position(4, 4)
         ));
 
         result = TurnResolutionResult.builder()
@@ -78,8 +76,8 @@ class SnapshotIntegrationTest {
                 .damageToB(30)               // A infligió 30 a B
                 .hitResultA(HitResult.HIT)           // ataque de A sobre B: HIT
                 .hitResultB(HitResult.DIRECT_HIT)    // ataque de B sobre A: DIRECT_HIT
-                .finalPositionA(new Position(A_COL, A_ROW))
-                .finalPositionB(new Position(B_COL, B_ROW))
+                .finalPositionA(new es.game.blindsector.domain.game.Position(A_COL, A_ROW))
+                .finalPositionB(new es.game.blindsector.domain.game.Position(B_COL, B_ROW))
                 .regionOfBSeenByA("C3")
                 .regionOfASeenByB("A1")
                 .impactAreaOfA(impactAreaA)
@@ -94,7 +92,7 @@ class SnapshotIntegrationTest {
     @Test
     @DisplayName("snapshot_perspectiva_playerA: datos propios y región rival correctos")
     void snapshot_perspectiva_playerA() {
-        SnapshotDTO snapshot = factory.buildSnapshot(game, result, PLAYER_A_ID);
+        SnapshotResponse snapshot = factory.buildSnapshot(game, result, PLAYER_A_ID);
 
         // Metadatos de partida
         assertThat(snapshot.getGameId()).isEqualTo("game-p307");
@@ -113,11 +111,11 @@ class SnapshotIntegrationTest {
         // Daño e impacto recibidos por A (causados por B)
         assertThat(snapshot.getDamageReceived()).isEqualTo(20);
         assertThat(snapshot.getHitOnMe()).isEqualTo("DIRECT_HIT");
-        assertThat(snapshot.getImpactAreaReceived()).contains(new PositionDTO(A_COL, A_ROW));
+        assertThat(snapshot.getImpactAreaReceived()).contains(new Position(A_COL, A_ROW));
 
         // Mi ataque (lanzado por A sobre B)
         assertThat(snapshot.getHitOnEnemy()).isEqualTo("HIT");
-        assertThat(snapshot.getMyAttackArea()).contains(new PositionDTO(B_COL, B_ROW));
+        assertThat(snapshot.getMyAttackArea()).contains(new Position(B_COL, B_ROW));
 
         // Partida no terminada → winnerId debe ser null
         assertThat(snapshot.getWinnerId()).isNull();
@@ -128,7 +126,7 @@ class SnapshotIntegrationTest {
     @Test
     @DisplayName("snapshot_perspectiva_playerB: datos propios y región rival correctos")
     void snapshot_perspectiva_playerB() {
-        SnapshotDTO snapshot = factory.buildSnapshot(game, result, PLAYER_B_ID);
+        SnapshotResponse snapshot = factory.buildSnapshot(game, result, PLAYER_B_ID);
 
         // Posición y HP del jugador solicitante (B)
         assertThat(snapshot.getMyCol()).isEqualTo(B_COL);
@@ -142,11 +140,11 @@ class SnapshotIntegrationTest {
         // Daño e impacto recibidos por B (causados por A)
         assertThat(snapshot.getDamageReceived()).isEqualTo(30);
         assertThat(snapshot.getHitOnMe()).isEqualTo("HIT");
-        assertThat(snapshot.getImpactAreaReceived()).contains(new PositionDTO(B_COL, B_ROW));
+        assertThat(snapshot.getImpactAreaReceived()).contains(new Position(B_COL, B_ROW));
 
         // Mi ataque (lanzado por B sobre A)
         assertThat(snapshot.getHitOnEnemy()).isEqualTo("DIRECT_HIT");
-        assertThat(snapshot.getMyAttackArea()).contains(new PositionDTO(A_COL, A_ROW));
+        assertThat(snapshot.getMyAttackArea()).contains(new Position(A_COL, A_ROW));
     }
 
     // ── Test 3 ───────────────────────────────────────────────────────────────
@@ -154,7 +152,7 @@ class SnapshotIntegrationTest {
     @Test
     @DisplayName("snapshot_no_filtra_posicion_enemiga: ningún campo directo expone coords del rival")
     void snapshot_no_filtra_posicion_enemiga() {
-        SnapshotDTO snapshotA = factory.buildSnapshot(game, result, PLAYER_A_ID);
+        SnapshotResponse snapshotA = factory.buildSnapshot(game, result, PLAYER_A_ID);
 
         // myCol/myRow de A no deben ser las coordenadas de B
         assertThat(snapshotA.getMyCol()).isNotEqualTo(B_COL);
@@ -165,7 +163,7 @@ class SnapshotIntegrationTest {
         assertThat(snapshotA.getEnemyRegion()).doesNotContain(String.valueOf(B_ROW));
 
         // Verificación simétrica desde perspectiva de B
-        SnapshotDTO snapshotB = factory.buildSnapshot(game, result, PLAYER_B_ID);
+        SnapshotResponse snapshotB = factory.buildSnapshot(game, result, PLAYER_B_ID);
 
         assertThat(snapshotB.getMyCol()).isNotEqualTo(A_COL);
         assertThat(snapshotB.getMyRow()).isNotEqualTo(A_ROW);
@@ -183,11 +181,11 @@ class SnapshotIntegrationTest {
                 .damageToB(60)
                 .hitResultA(HitResult.HIT)
                 .hitResultB(HitResult.MISS)
-                .finalPositionA(new Position(A_COL, A_ROW))
-                .finalPositionB(new Position(B_COL, B_ROW))
+                .finalPositionA(new es.game.blindsector.domain.game.Position(A_COL, A_ROW))
+                .finalPositionB(new es.game.blindsector.domain.game.Position(B_COL, B_ROW))
                 .regionOfBSeenByA("C3")
                 .regionOfASeenByB("A1")
-                .impactAreaOfA(new ImpactArea(List.of(new Position(B_COL, B_ROW))))
+                .impactAreaOfA(new ImpactArea(List.of(new es.game.blindsector.domain.game.Position(B_COL, B_ROW))))
                 .impactAreaOfB(new ImpactArea(List.of()))
                 .gameOver(true)
                 .winnerId(PLAYER_A_ID)
@@ -195,8 +193,8 @@ class SnapshotIntegrationTest {
 
         game.setStatus(GameStatus.FINISHED);
 
-        SnapshotDTO snapshotA = factory.buildSnapshot(game, finishedResult, PLAYER_A_ID);
-        SnapshotDTO snapshotB = factory.buildSnapshot(game, finishedResult, PLAYER_B_ID);
+        SnapshotResponse snapshotA = factory.buildSnapshot(game, finishedResult, PLAYER_A_ID);
+        SnapshotResponse snapshotB = factory.buildSnapshot(game, finishedResult, PLAYER_B_ID);
 
         // Ambos jugadores ven el mismo winnerId
         assertThat(snapshotA.getWinnerId()).isEqualTo(PLAYER_A_ID);
@@ -213,20 +211,20 @@ class SnapshotIntegrationTest {
                 .damageToB(60)
                 .hitResultA(HitResult.HIT)
                 .hitResultB(HitResult.HIT)
-                .finalPositionA(new Position(A_COL, A_ROW))
-                .finalPositionB(new Position(B_COL, B_ROW))
+                .finalPositionA(new es.game.blindsector.domain.game.Position(A_COL, A_ROW))
+                .finalPositionB(new es.game.blindsector.domain.game.Position(B_COL, B_ROW))
                 .regionOfBSeenByA("C3")
                 .regionOfASeenByB("A1")
-                .impactAreaOfA(new ImpactArea(List.of(new Position(B_COL, B_ROW))))
-                .impactAreaOfB(new ImpactArea(List.of(new Position(A_COL, A_ROW))))
+                .impactAreaOfA(new ImpactArea(List.of(new es.game.blindsector.domain.game.Position(B_COL, B_ROW))))
+                .impactAreaOfB(new ImpactArea(List.of(new es.game.blindsector.domain.game.Position(A_COL, A_ROW))))
                 .gameOver(true)
                 .winnerId(null)   // null → empate
                 .build();
 
         game.setStatus(GameStatus.FINISHED);
 
-        SnapshotDTO snapshotA = factory.buildSnapshot(game, drawResult, PLAYER_A_ID);
-        SnapshotDTO snapshotB = factory.buildSnapshot(game, drawResult, PLAYER_B_ID);
+        SnapshotResponse snapshotA = factory.buildSnapshot(game, drawResult, PLAYER_A_ID);
+        SnapshotResponse snapshotB = factory.buildSnapshot(game, drawResult, PLAYER_B_ID);
 
         assertThat(snapshotA.getWinnerId()).isEqualTo("draw");
         assertThat(snapshotB.getWinnerId()).isEqualTo("draw");

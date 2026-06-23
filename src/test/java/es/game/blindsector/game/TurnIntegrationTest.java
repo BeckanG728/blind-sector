@@ -1,11 +1,11 @@
 package es.game.blindsector.game;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import es.game.blindsector.game.domain.GameState;
-import es.game.blindsector.game.dto.SubmitActionRequest;
+import es.game.blindsector.api.dto.request.SubmitActionRequest;
+import es.game.blindsector.domain.game.GameState;
+import es.game.blindsector.domain.player.PlayerState;
 import es.game.blindsector.infrastructure.memory.ActiveGamesRegistry;
-import es.game.blindsector.persistence.repository.GameRepository;
-import es.game.blindsector.player.domain.PlayerState;
+import es.game.blindsector.infrastructure.persistence.repository.GameRepository;
 import es.game.blindsector.shared.enums.GameStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -136,7 +136,7 @@ class TurnIntegrationTest {
     // ── 2. submit_segunda_accion_resuelve ─────────────────────────────────────
 
     @Test
-    @DisplayName("submit_segunda_accion_resuelve: la segunda acción resuelve el turno y devuelve SnapshotDTO completo")
+    @DisplayName("submit_segunda_accion_resuelve: la segunda acción resuelve el turno y devuelve SnapshotResponse completo")
     void submit_segunda_accion_resuelve() throws Exception {
         // Primera acción de A (queda en espera)
         mockMvc.perform(post("/api/turn/submit")
@@ -145,12 +145,12 @@ class TurnIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.waiting").value(true));
 
-        // Segunda acción de B → debe resolver el turno y devolver SnapshotDTO
+        // Segunda acción de B → debe resolver el turno y devolver SnapshotResponse
         mockMvc.perform(post("/api/turn/submit")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(accionDeB(1))))
                 .andExpect(status().isOk())
-                // Campos obligatorios de SnapshotDTO (F0-07)
+                // Campos obligatorios de SnapshotResponse (F0-07)
                 .andExpect(jsonPath("$.gameId").value(GAME_ID))
                 .andExpect(jsonPath("$.turn").isNumber())
                 .andExpect(jsonPath("$.status").isString())
@@ -223,7 +223,7 @@ class TurnIntegrationTest {
     // ── 6. polling_turno_resuelto ─────────────────────────────────────────────
 
     @Test
-    @DisplayName("polling_turno_resuelto: GET /api/game/{gameId}/state después de resolver devuelve SnapshotDTO")
+    @DisplayName("polling_turno_resuelto: GET /api/game/{gameId}/state después de resolver devuelve SnapshotResponse")
     void polling_turno_resuelto() throws Exception {
         // Enviamos ambas acciones para resolver el turno
         mockMvc.perform(post("/api/turn/submit")
@@ -236,7 +236,7 @@ class TurnIntegrationTest {
                         .content(objectMapper.writeValueAsString(accionDeB(1))))
                 .andExpect(status().isOk());
 
-        // Polling tras la resolución: debe devolver SnapshotDTO con los campos mínimos
+        // Polling tras la resolución: debe devolver SnapshotResponse con los campos mínimos
         mockMvc.perform(get("/api/game/{gameId}/state", GAME_ID)
                         .header("X-Player-Id", PLAYER_A))
                 .andExpect(status().isOk())

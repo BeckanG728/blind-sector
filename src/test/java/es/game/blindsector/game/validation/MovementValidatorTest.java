@@ -1,6 +1,7 @@
 package es.game.blindsector.game.validation;
 
-import es.game.blindsector.player.domain.PlayerState;
+import es.game.blindsector.domain.player.PlayerState;
+import es.game.blindsector.engine.validation.MovementValidator;
 import es.game.blindsector.shared.enums.GameErrorCode;
 import es.game.blindsector.shared.exception.GameException;
 import org.junit.jupiter.api.BeforeEach;

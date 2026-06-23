@@ -1,11 +1,12 @@
 package es.game.blindsector.game.validation;
 
-import es.game.blindsector.game.domain.GameState;
-import es.game.blindsector.player.domain.PlayerState;
+import es.game.blindsector.domain.game.GameState;
+import es.game.blindsector.domain.player.PlayerState;
+import es.game.blindsector.domain.turn.TurnAction;
+import es.game.blindsector.engine.validation.TurnValidator;
 import es.game.blindsector.shared.enums.GameErrorCode;
 import es.game.blindsector.shared.enums.GameStatus;
 import es.game.blindsector.shared.exception.GameException;
-import es.game.blindsector.turn.domain.TurnAction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,7 +26,7 @@ class TurnValidatorTest {
         PlayerState playerA = new PlayerState("player-a", 2, 2);
         PlayerState playerB = new PlayerState("player-b", 12, 12);
 
-        game = new GameState("game-1",GameStatus.ACTIVE,1, playerA, playerB);
+        game = new GameState("game-1", GameStatus.ACTIVE, 1, playerA, playerB);
     }
 
     // ------------------------------------------------------------------ //

@@ -1,6 +1,7 @@
 package es.game.blindsector.game.engine;
 
-import es.game.blindsector.player.domain.PlayerState;
+import es.game.blindsector.domain.player.PlayerState;
+import es.game.blindsector.engine.MovementEngine;
 import es.game.blindsector.shared.enums.GameErrorCode;
 import es.game.blindsector.shared.exception.GameException;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,18 +9,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 /**
  * Tests unitarios de MovementEngine.
  * No levanta Spring — instancia directa de la clase.
  * Escenarios cubiertos (según criterios de aceptación P2-01):
- *  - Movimiento recto válido
- *  - Movimiento diagonal válido
- *  - Quedarse quieto (distancia 0)
- *  - Exceder distancia Chebyshev
- *  - Salir del tablero por cada borde (top, bottom, left, right)
- *  - Orden de validación: OUT_OF_BOUNDS tiene prioridad sobre INVALID_MOVE
+ * - Movimiento recto válido
+ * - Movimiento diagonal válido
+ * - Quedarse quieto (distancia 0)
+ * - Exceder distancia Chebyshev
+ * - Salir del tablero por cada borde (top, bottom, left, right)
+ * - Orden de validación: OUT_OF_BOUNDS tiene prioridad sobre INVALID_MOVE
  */
 class MovementEngineTest {
 

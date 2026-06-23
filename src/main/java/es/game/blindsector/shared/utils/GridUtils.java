@@ -1,8 +1,8 @@
 package es.game.blindsector.shared.utils;
 
-import es.game.blindsector.game.domain.ImpactArea;
-import es.game.blindsector.game.domain.Position;
-import es.game.blindsector.game.domain.Region;
+import es.game.blindsector.domain.game.ImpactArea;
+import es.game.blindsector.domain.game.Position;
+import es.game.blindsector.domain.game.Region;
 
 import java.util.ArrayList;
 import java.util.List;
