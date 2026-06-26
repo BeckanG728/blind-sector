@@ -2,12 +2,12 @@ package es.game.blindsector.api.controller;
 
 import es.game.blindsector.api.dto.request.SubmitActionRequest;
 import es.game.blindsector.api.dto.response.SnapshotResponse;
+import es.game.blindsector.application.service.SnapshotService;
 import es.game.blindsector.application.service.TurnSubmissionService;
 import es.game.blindsector.domain.game.GameState;
 import es.game.blindsector.domain.turn.TurnAction;
 import es.game.blindsector.domain.turn.TurnCoordinatorResult;
 import es.game.blindsector.infrastructure.memory.GameMemoryStore;
-import es.game.blindsector.snapshot.factory.SnapshotFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -37,14 +37,14 @@ import java.util.Map;
 public class TurnController {
 
     private final TurnSubmissionService turnSubmissionService;
-    private final SnapshotFactory snapshotFactory;
+    private final SnapshotService snapshotService;
     private final GameMemoryStore gameMemoryStore;
 
     public TurnController(TurnSubmissionService turnSubmissionService,
-                          SnapshotFactory snapshotFactory,
+                          SnapshotService snapshotService,
                           GameMemoryStore gameMemoryStore) {
         this.turnSubmissionService = turnSubmissionService;
-        this.snapshotFactory = snapshotFactory;
+        this.snapshotService = snapshotService;
         this.gameMemoryStore = gameMemoryStore;
     }
 
@@ -77,7 +77,7 @@ public class TurnController {
 
         // El turno fue resuelto: construimos el snapshot para este jugador
         GameState game = gameMemoryStore.getOrThrow(request.gameId());
-        SnapshotResponse snapshot = snapshotFactory.buildSnapshot(
+        SnapshotResponse snapshot = snapshotService.buildSnapshot(
                 game,
                 result.getResolutionResult(),
                 request.playerId()

@@ -51,7 +51,7 @@ public class SnapshotService {
         return gameMemoryStore.getOrThrow(gameId).getStatus();
     }
 
-    private SnapshotResponse buildSnapshot(GameState game, TurnResolutionResult result, String requestingPlayerId) {
+    public SnapshotResponse buildSnapshot(GameState game, TurnResolutionResult result, String requestingPlayerId) {
         boolean isPlayerA = requestingPlayerId.equals(game.getPlayerA().getPlayerId());
 
         PlayerState me = isPlayerA ? game.getPlayerA() : game.getPlayerB();
