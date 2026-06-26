@@ -1,10 +1,11 @@
 package es.game.blindsector.infrastructure.memory;
 
-import es.game.blindsector.game.domain.GameState;
+import es.game.blindsector.domain.game.GameState;
 import es.game.blindsector.shared.enums.GameStatus;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ActiveGamesRegistryTest {
 

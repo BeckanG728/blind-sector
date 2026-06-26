@@ -1,6 +1,6 @@
 package es.game.blindsector.shared.constants;
 
-import es.game.blindsector.game.domain.Position;
+import es.game.blindsector.domain.game.Position;
 
 import java.util.List;
 

@@ -1,6 +1,6 @@
 package es.game.blindsector.infrastructure.lock;
 
-import es.game.blindsector.game.domain.GameState;
+import es.game.blindsector.domain.game.GameState;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.locks.ReentrantLock;

@@ -1,15 +1,16 @@
 package es.game.blindsector.game.engine;
 
-import es.game.blindsector.game.domain.ImpactArea;
-import es.game.blindsector.game.domain.Position;
-import es.game.blindsector.player.domain.PlayerState;
+import es.game.blindsector.domain.game.ImpactArea;
+import es.game.blindsector.domain.game.Position;
+import es.game.blindsector.domain.player.PlayerState;
+import es.game.blindsector.engine.ImpactResolver;
 import es.game.blindsector.shared.enums.HitResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class ImpactResolverTest {
 

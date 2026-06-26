@@ -1,21 +1,25 @@
 package es.game.blindsector.game.engine;
 
-import es.game.blindsector.game.domain.GameState;
-import es.game.blindsector.player.domain.PlayerState;
+import es.game.blindsector.domain.game.GameState;
+import es.game.blindsector.domain.player.PlayerState;
+import es.game.blindsector.domain.turn.TurnAction;
+import es.game.blindsector.domain.turn.TurnResolutionResult;
+import es.game.blindsector.engine.DamageCalculator;
+import es.game.blindsector.engine.ImpactResolver;
+import es.game.blindsector.engine.MovementEngine;
+import es.game.blindsector.engine.TurnResolver;
 import es.game.blindsector.shared.enums.GameStatus;
 import es.game.blindsector.shared.enums.HitResult;
-import es.game.blindsector.turn.domain.TurnAction;
-import es.game.blindsector.turn.domain.TurnResolutionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests unitarios de TurnResolver.
  * Sin Spring context — instancias directas de todas las dependencias.
-
+ * <p>
  * Cubre los 8 escenarios del criterio de aceptación P2-09 más
  * verificaciones de determinismo e incremento de turno.
  */
@@ -43,7 +47,7 @@ class TurnResolverTest {
     private GameState buildGame(int aCol, int aRow, int bCol, int bRow) {
         PlayerState playerA = new PlayerState("player-a", aCol, aRow);
         PlayerState playerB = new PlayerState("player-b", bCol, bRow);
-        GameState game = new GameState("game-test",GameStatus.ACTIVE,1, playerA, playerB);
+        GameState game = new GameState("game-test", GameStatus.ACTIVE, 1, playerA, playerB);
         return game;
     }
 

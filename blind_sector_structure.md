@@ -302,7 +302,8 @@ lobby/
 - Ranking o emparejamiento por nivel
 
 > **Nota de nomenclatura:** el módulo se llama `lobby/` en lugar de `matchmaking/` porque describe con precisión el
-> alcance real: un ciclo host/join, no un sistema de emparejamiento. `matchmaking/` implicaría infraestructura de búsqueda
+> alcance real: un ciclo host/join, no un sistema de emparejamiento. `matchmaking/` implicaría infraestructura de
+> búsqueda
 > automática que no existe en el MVP ni está planificada a corto plazo.
 
 ---

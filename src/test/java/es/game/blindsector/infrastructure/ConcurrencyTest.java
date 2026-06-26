@@ -1,9 +1,9 @@
 package es.game.blindsector.infrastructure;
 
-import es.game.blindsector.game.domain.GameState;
-import es.game.blindsector.player.domain.PlayerState;
+import es.game.blindsector.domain.game.GameState;
+import es.game.blindsector.domain.player.PlayerState;
+import es.game.blindsector.domain.turn.TurnAction;
 import es.game.blindsector.shared.enums.GameStatus;
-import es.game.blindsector.turn.domain.TurnAction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +13,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConcurrencyTest {
 
@@ -52,7 +53,7 @@ class ConcurrencyTest {
         // Definimos la acción repetida que ambos hilos intentarán procesar
         TurnAction duplicateAction = new TurnAction();
 
-        // Tarea concurrente que simula el flujo coordinado por LockExecutor y TurnCoordinator
+        // Tarea concurrente que simula el flujo coordinado por LockExecutor y TurnCoordinatorService
         Runnable submitActionTask = () -> {
             readyLatch.countDown(); // El hilo avisa que está listo
             try {
@@ -61,7 +62,7 @@ class ConcurrencyTest {
                 // --- INICIO DE ZONA CRÍTICA (Simulando LockExecutor P1-03) ---
                 gameState.getLock().lock();
                 try {
-                    // Mecanismo de deduplicación comprobado DENTRO del lock (TurnCoordinator P2-06)
+                    // Mecanismo de deduplicación comprobado DENTRO del lock (TurnCoordinatorService P2-06)
                     if (!gameState.getPendingActions().containsKey(playerId)) {
 
                         // Registramos la acción en el mapa concurrente

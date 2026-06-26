@@ -1,9 +1,9 @@
 package es.game.blindsector.infrastructure.scheduler;
 
-import es.game.blindsector.game.domain.GameState;
+import es.game.blindsector.application.service.TurnTimeoutService;
+import es.game.blindsector.domain.game.GameState;
 import es.game.blindsector.infrastructure.memory.ActiveGamesRegistry;
 import es.game.blindsector.shared.enums.GameStatus;
-import es.game.blindsector.turn.service.TurnTimeoutService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -47,9 +47,9 @@ public class TurnTimeoutScheduler {
             // - pendingActions.size() == 1
             // - (now - firstActionReceivedAt) > timeout configurado
             if (game.getStatus() == GameStatus.ACTIVE
-                    && game.getPendingActions().size() == 1
-                    && game.getFirstActionReceivedAt() != null
-                    && (now - game.getFirstActionReceivedAt()) > timeoutMs) {
+                && game.getPendingActions().size() == 1
+                && game.getFirstActionReceivedAt() != null
+                && (now - game.getFirstActionReceivedAt()) > timeoutMs) {
 
                 // 3. Delega la resolución sin tocar pendingActions ni el lock directamente
                 turnTimeoutService.forceResolveTimeout(game.getGameId());
